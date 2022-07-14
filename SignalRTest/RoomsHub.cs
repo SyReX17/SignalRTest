@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SignalRTest
 {
-    public class ChatHub : Hub
+    public class RoomsHub : Hub
     {
         public static List<User> users = new List<User>();
         public static List<Connection> connections = new List<Connection>();
@@ -21,7 +21,7 @@ namespace SignalRTest
                     UserName = Context.ConnectionId
                 };
 
-                   
+
                 users.Add(user);
             }
             else

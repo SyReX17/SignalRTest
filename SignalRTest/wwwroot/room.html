@@ -17,7 +17,6 @@
                 <div class="fhead">
                     <div class="fhead__container">
                         <h2 class="h__main" id="roomname"></h2>
-                        <input type="button" id="roomBtn" value="Room" />
                     </div>
                 </div>
                 <div class="call">
@@ -112,13 +111,24 @@
                 return matches ? decodeURIComponent(matches[1]) : undefined;
             }
 
+
+            async function f() {
+
+                let promise = new Promise((resolve, reject) => {
+                    setTimeout(() => resolve("готово!"), 1000)
+                });
+
+                let result = await promise;
+                hubConnection.invoke("Join", roomName);
+            }
+
+            
+
+
             const hubConnection = new signalR.HubConnectionBuilder()
                 .withUrl("/chat")
                 .build();
 
-            document.getElementById("roomBtn").addEventListener("click", function (e) {
-                hubConnection.invoke("Join", roomName);
-            });
 
             document.getElementById("close").addEventListener("click", function (e) {
                 e.preventDefault();
@@ -159,6 +169,8 @@
             }
 
             hubConnection.start();
+
+            f();
         </script>
     </body>
 </html>

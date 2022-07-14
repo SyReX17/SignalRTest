@@ -49,15 +49,7 @@ namespace SignalRTest
 
                     await Clients.Group(roomName).SendAsync("Notify", $"{Context.ConnectionId} вошел в чат {roomName}");
 
-                    List<string> userNames = new List<string>();
-
-                    Console.WriteLine(room.Users.Count.ToString());
-
-                    foreach (var roomuser in room.Users)
-                    {
-                        userNames.Add(roomuser.UserName);
-                    }
-                    await Clients.Group(roomName).SendAsync("RoomInfo", userNames);
+                    await GetUsers(room);
                     await HubContext.GetRooms();
                 }
                 else
@@ -65,6 +57,19 @@ namespace SignalRTest
                     Console.WriteLine("Комната не найдена!!!");
                 }
             }
+        }
+
+        public async Task GetUsers(ConversationRoom room)
+        {
+            List<string> userNames = new List<string>();
+
+            Console.WriteLine(room.Users.Count.ToString());
+
+            foreach (var roomuser in room.Users)
+            {
+                userNames.Add(roomuser.UserName);
+            }
+            await Clients.Group(room.RoomName).SendAsync("RoomInfo", userNames);
         }
 
         public async Task Create(string roomName)
@@ -123,7 +128,7 @@ namespace SignalRTest
                     {
                         Rooms.rooms.Remove(room);
                     }
-                    await Clients.Group(roomName).SendAsync("Notify", $"{Context.ConnectionId} покинул чат {room.RoomName}");
+                    await GetUsers(room);
                     await HubContext.GetRooms();
                 }
             }

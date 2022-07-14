@@ -1,6 +1,5 @@
 ﻿namespace SignalRTest
 {
-    delegate void AccountHandler(string message);
     public static class Rooms
     {
         public static List<User> users = new List<User>();

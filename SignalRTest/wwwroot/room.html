@@ -78,7 +78,7 @@
                                         </a>
                                     </div>
                                     <div class="input__btn">
-                                        <a href="index.html" class="btn-floating btn-large waves-effect waves-light red">
+                                        <a id="close" class="btn-floating btn-large waves-effect waves-light red">
                                             <span class="material-symbols-outlined">
                                                 call_end
                                             </span>
@@ -113,11 +113,17 @@
             }
 
             const hubConnection = new signalR.HubConnectionBuilder()
-                .withUrl("https://localhost:7291/chat")
+                .withUrl("/chat")
                 .build();
 
             document.getElementById("roomBtn").addEventListener("click", function (e) {
                 hubConnection.invoke("Join", roomName);
+            });
+
+            document.getElementById("close").addEventListener("click", function (e) {
+                e.preventDefault();
+                hubConnection.invoke("Leave", roomName);
+                window.location.href = '/index.html';
             });
 
 
@@ -129,8 +135,8 @@
 
                 console.log(users);
                 const rows = document.querySelector("tbody");
-                rooms.forEach(room => {
-                    rows.append(getUsername(room))
+                users.forEach(user => {
+                    rows.append(getUsername(user))
                 });
             });
             function TableClear() {
@@ -142,11 +148,11 @@
 
             function getUsername(user) {
                 const tr = document.createElement("tr");
-                tr.setAttribute("data-rowid", user.name);
+                tr.setAttribute("data-rowid", user);
 
 
                 const nameTd = document.createElement("td");
-                nameTd.append(user.name);
+                nameTd.append(user);
                 tr.append(nameTd);
 
                 return tr;

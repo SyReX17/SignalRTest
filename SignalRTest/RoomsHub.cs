@@ -5,20 +5,10 @@ namespace SignalRTest
 {
     public class RoomsHub : Hub
     {
-        bool stop;
+        public IHubContext<RoomsHub> _hubContext;
         public override async Task OnConnectedAsync()
         {
-            stop = false;
-            await Clients.All.SendAsync("Notify", $"{Context.ConnectionId} вошел");
-            var count = Rooms.rooms.Count;
-            while (!stop)
-            {
-                if(Rooms.rooms.Count != count)
-                {
-                    count = Rooms.rooms.Count;
-                    await ShareRoomInfo();
-                }
-            }
+            Console.WriteLine("Connect");
             await base.OnConnectedAsync();
         }
         public async Task ShareRoomInfo()
@@ -42,14 +32,8 @@ namespace SignalRTest
             await Clients.Caller.SendAsync("Notify", RoomInfoList);
         }
 
-        public async Task Leave()
-        {
-            stop = true;
-        }
-
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            await Leave();
             await base.OnDisconnectedAsync(exception);
         }
     }

@@ -13,7 +13,17 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.Use(async (context, next) =>
+{
+    var hubContext = context.RequestServices.GetRequiredService<IHubContext<RoomsHub>>();
+    
+    HubContext.hubContext = hubContext;
 
+    if (next != null)
+    {
+        await next.Invoke();
+    }
+});
 
 app.UseEndpoints(endpoints =>
 {
@@ -57,6 +67,7 @@ app.UseEndpoints(endpoints =>
             Rooms.rooms.Add(cr);
 
             Console.WriteLine(Rooms.rooms.Count.ToString());
+            await HubContext.GetRooms();
         }
     });
 });

@@ -1,89 +1,69 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 
 namespace SignalRTest
 {
+    
     public class ChatHub : Hub
     {
-        public override async Task OnConnectedAsync()
-        {
-            // Retrieve user.
-            var user = Rooms.users.FirstOrDefault(user => user.UserName == Context.ConnectionId);
-
-            // If user does not exist in database, must add.
-            if (user == null)
-            {
-                user = new User()
-                {
-                    UserName = Context.ConnectionId
-                };
-
-                   
-                Rooms.users.Add(user);
-            }
-            else
-            {
-                // Add to each assigned group.
-                foreach (var item in user.Rooms)
-                {
-                    await Groups.AddToGroupAsync(Context.ConnectionId, item);
-                }
-            }
-
-            await Clients.All.SendAsync("Notify", $"{Context.ConnectionId} вошел");
-            await base.OnConnectedAsync();
-        }
-
+        
         public async Task Join(string roomName)
         {
-            Console.WriteLine("OK");
-            var room = Rooms.rooms.FirstOrDefault(room => room.RoomName == roomName);
+            var currentUser = Rooms.users.FirstOrDefault(user => user.UserName == Context.ConnectionId);
 
-            var testrooms = Rooms.rooms.Select(r => r.RoomName).ToList();
-            foreach (var rm in testrooms)
+            if (currentUser == null)
             {
-                Console.WriteLine(rm);
-            }
+                Console.WriteLine("OK");
+                var room = Rooms.rooms.FirstOrDefault(room => room.RoomName == roomName);
 
-            if (room != null)
-            {
-
-                if (room.Users != null)
+                var testrooms = Rooms.rooms.Select(r => r.RoomName).ToList();
+                foreach (var rm in testrooms)
                 {
-                    var clients = room.Users.Select(user => user.UserName).ToList();
+                    Console.WriteLine(rm);
+                }
 
-                    await Clients.Group(roomName).SendAsync("AddPeer", Context.ConnectionId, false);
+                if (room != null)
+                {
 
-                    foreach (var client in clients)
+                    if (room.Users != null)
                     {
-                        await Clients.Caller.SendAsync("AddPeer", client, true);
+                        var clients = room.Users.Select(user => user.UserName).ToList();
+
+                        await Clients.Group(roomName).SendAsync("AddPeer", Context.ConnectionId, false);
+
+                        foreach (var client in clients)
+                        {
+                            await Clients.Caller.SendAsync("AddPeer", client, true);
+                        }
                     }
+
+                    var user = new User()
+                    {
+                        UserName = Context.ConnectionId,
+                        Rooms = new List<string>()
+                    };
+
+                    user.Rooms.Add(roomName);
+                    Rooms.users.Add(user);
+                    room.Users.Add(user);
+                    await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
+
+                    await Clients.Group(roomName).SendAsync("Notify", $"{Context.ConnectionId} вошел в чат {roomName}");
+
+                    List<string> userNames = new List<string>();
+
+                    Console.WriteLine(room.Users.Count.ToString());
+
+                    foreach (var roomuser in room.Users)
+                    {
+                        userNames.Add(roomuser.UserName);
+                    }
+                    await Clients.Group(roomName).SendAsync("RoomInfo", userNames);
+                    await HubContext.GetRooms();
                 }
-
-                var user = new User()
+                else
                 {
-                    UserName = Context.ConnectionId,
-                    Rooms = new List<string>()
-                };
-
-                user.Rooms.Add(roomName);
-                Rooms.users.Add(user);
-                room.Users.Add(user);
-                await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
-
-                await Clients.Group(roomName).SendAsync("Notify", $"{Context.ConnectionId} вошел в чат {roomName}");
-
-                List<string> userNames = new List<string>();
-
-                foreach(var roomuser in room.Users)
-                {
-                    userNames.Add(roomuser.UserName);
+                    Console.WriteLine("Комната не найдена!!!");
                 }
-                await Clients.Group(roomName).SendAsync("RoomInfo", userNames);
-            }
-            else
-            {
-                Console.WriteLine("Комната не найдена!!!");
             }
         }
 
@@ -104,6 +84,7 @@ namespace SignalRTest
                 Console.WriteLine(Rooms.rooms.Count.ToString());
 
                 await Clients.All.SendAsync("Notify", $"{Context.ConnectionId} создал чат {roomName}");
+
 
 
                 await Join(roomName);
@@ -143,6 +124,7 @@ namespace SignalRTest
                         Rooms.rooms.Remove(room);
                     }
                     await Clients.Group(roomName).SendAsync("Notify", $"{Context.ConnectionId} покинул чат {room.RoomName}");
+                    await HubContext.GetRooms();
                 }
             }
         }

@@ -2,51 +2,153 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>SignalR Chat</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link type="text/css" rel="stylesheet" href="vendors/materialize/materialize.min.css">
+    <link rel="stylesheet" href="styles/common.css">
+    <link rel="stylesheet" href="styles/rooms.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title> Vchat Practice </title>
 </head>
 <body>
-    <div id="roomForm">
-        <input type="text" id="roomName" />
-        <input type="button" id="connectBtn" value="Connect" />
+    <div class="wrap">
+        <div class="content">
+            <div class="fhead">
+                <div class="fhead__container">
+                    <h1 class="h__main">Videochat</h1>
+                </div>
+            </div>
+            <div class="fbody">
+                <div class="fbody__container">
+                    <div class="fbody__roomcreate">
+                        <div id="roomForm">
+                            <input type="text" id="roomName" />
+                            <input type="button" id="connectBtn" value="Connect" />
+                        </div>
+                        <div id="createForm">
+                            <input type="text" id="roomNameCreate" />
+                            <input type="button" id="createBtn" value="Create" />
+                        </div>
+                        <div id="sendForm">
+                            <input type="text" id="message" />
+                            <input type="button" id="disconnectBtn" value="Disconnect" />
+                        </div>
+                    </div>
+                    <div class="fbody__roomlist">
+        <div>
+        <h4 class="h__main"> Rooms </h1>
+        <table class="table table-condensed table-striped table-bordered centered striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Paritcipants</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
     </div>
-    <div id="createForm">
-        <input type="text" id="roomNameCreate" />
-        <input type="button" id="createBtn" value="Create" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="ftr">
+            <div class="ftr__container">
+                <div class="ftr__text">
+                    <p>AddCode Summer Practice 2022 ©VideoChat Team</p>
+                </div>
+            </div>
+        </footer>
     </div>
-    <div id="sendForm">
-        <input type="text" id="message" />
-        <input type="button" id="sendBtn" value="Send" />
-        <input type="button" id="disconnectBtn" value="Disconnect" />
-    </div>
-    <div id="chatroom"></div>
-
-    <script src="js/signalr/dist/browser/signalr.min.js"></script>
+    <script type="text/javascript" src="vendors/materialize/materialize.min.js"></script>
+    <script src="vendors/signalr/dist/browser/signalr.min.js"></script>
     <script>
+
+        // HTTP GET-запрос на сервер для получения списка комнат (Fetch)
+        async function getRooms() {
+        const response = await fetch("/api/room", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok) {
+                const rooms = await response.json();
+                console.log(rooms);
+                const rows = document.querySelector("tbody");
+                rooms.forEach(room => {
+                    rows.append(getRow(room))
+                });
+            }
+        }
+        getRooms();
+
+        async function addRoom(name) {
+            const response = await fetch("/api/room", {
+                method: "POST",
+                body: name
+            });
+        }
+
+        // Перевод JSON в таблицу - реализация списка комнат
+        function getRow(user) {
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", user.name);
+ 
+
+             const nameTd = document.createElement("td");
+             nameTd.append(user.name);
+             tr.append(nameTd);
+
+             const ptcTd = document.createElement("td");
+             ptcTd.append(user.numberOfClients);
+             tr.append(ptcTd);
+
+            const linksTd = document.createElement("td");
+            const joinLink = document.createElement("a");
+                joinLink.setAttribute("style", "cursor:pointer;padding:15px;");
+                joinLink.append("Join");
+                joinLink.addEventListener("click", e => {
+                    e.preventDefault();
+                    hubConnection.invoke("Leave");
+                    document.cookie = `name=${user.name}`;
+                    window.location.href = 'https://localhost:7291/room.html';
+                    });
+                linksTd.append(joinLink); 
+
+                tr.appendChild(linksTd);
+ 
+            return tr;
+        }
+
+        // Очистка списка для обновления
+        function TableClear(){          
+            const tableBody = document.querySelector("tbody");
+            while (tableBody.firstChild) {
+                tableBody.removeChild(tableBody.firstChild);
+            }
+        }
+
+        // Установка Web Socket соединения через библиотеку SignalR
         const hubConnection = new signalR.HubConnectionBuilder()
-            .withUrl("/chat")
+            .withUrl("/rooms")
             .build();
 
         // получение сообщения от сервера
-        hubConnection.on('Receive', function (message, connectionId) {
+        hubConnection.on('ShareRoomInfo', function (rooms) {
 
-            // создаем элемент <b> для имени идентификатора подключения
-            let userNameElem = document.createElement("b");
-            userNameElem.appendChild(document.createTextNode(connectionId + ": "));
+            TableClear();
 
-            // создает элемент <p> для сообщения пользователя
-            let elem = document.createElement("p");
-            elem.appendChild(userNameElem);
-            elem.appendChild(document.createTextNode(message));
-
-            var firstElem = document.getElementById("chatroom").firstChild;
-            document.getElementById("chatroom").insertBefore(elem, firstElem);
+            console.log(rooms);
+                const rows = document.querySelector("tbody");
+                rooms.forEach(room => {
+                rows.append(getRow(room))
+                });
 
         });
 
+        // Вывод информации
         hubConnection.on('Notify', function (message) {
 
             console.log(JSON.stringify(message));
-            // добавляет элемент для диагностического сообщения
             let notifyElem = document.createElement("b");
             notifyElem.appendChild(document.createTextNode(message));
             let elem = document.createElement("p");
@@ -55,7 +157,7 @@
             document.getElementById("chatroom").insertBefore(elem, firstElem);
         });
 
-        // отправка сообщения на сервер
+        // Подключение к комнате
         document.getElementById("connectBtn").addEventListener("click", function (e) {
             let message = document.getElementById("roomName").value;
             console.log(message);
@@ -65,7 +167,7 @@
         document.getElementById("createBtn").addEventListener("click", function (e) {
             let message = document.getElementById("roomNameCreate").value;
             console.log(message);
-            hubConnection.invoke('Create', message);
+            addRoom(message);
         });
 
         document.getElementById("disconnectBtn").addEventListener("click", function (e) {

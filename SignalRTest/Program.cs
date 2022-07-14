@@ -13,19 +13,22 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+
+
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapHub<ChatHub>("/chat");
+    endpoints.MapHub<RoomsHub>("/rooms");
     endpoints.MapGet("/api/room", () =>
     {
         List<RoomInfo> RoomInfoList = new List<RoomInfo>();
 
-        if (ChatHub.rooms.Count == 0)
+        if (Rooms.rooms.Count == 0)
             return RoomInfoList;
         //Results.NotFound(new { message = "Не найдено ни одной комнаты." });
         else
         {
-            foreach (var room in ChatHub.rooms)
+            foreach (var room in Rooms.rooms)
             {
                 RoomInfo roominfo = new RoomInfo(room.RoomName, room.Users.Count);
                 RoomInfoList.Add(roominfo);
@@ -41,7 +44,7 @@ app.UseEndpoints(endpoints =>
         {
             roomName = await reader.ReadToEndAsync();
         }
-        var room = ChatHub.rooms.FirstOrDefault(room => room.RoomName == roomName);
+        var room = Rooms.rooms.FirstOrDefault(room => room.RoomName == roomName);
 
         if (room == null)
         {
@@ -51,9 +54,9 @@ app.UseEndpoints(endpoints =>
                 Users = new List<User>()
             };
 
-            ChatHub.rooms.Add(cr);
+            Rooms.rooms.Add(cr);
 
-            Console.WriteLine(ChatHub.rooms.Count.ToString());
+            Console.WriteLine(Rooms.rooms.Count.ToString());
         }
     });
 });

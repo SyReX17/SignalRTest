@@ -5,13 +5,10 @@ namespace SignalRTest
 {
     public class ChatHub : Hub
     {
-        public static List<User> users = new List<User>();
-        public static List<Connection> connections = new List<Connection>();
-        public static List<ConversationRoom> rooms = new List<ConversationRoom>();
         public override async Task OnConnectedAsync()
         {
             // Retrieve user.
-            var user = users.FirstOrDefault(user => user.UserName == Context.ConnectionId);
+            var user = Rooms.users.FirstOrDefault(user => user.UserName == Context.ConnectionId);
 
             // If user does not exist in database, must add.
             if (user == null)
@@ -22,7 +19,7 @@ namespace SignalRTest
                 };
 
                    
-                users.Add(user);
+                Rooms.users.Add(user);
             }
             else
             {
@@ -36,18 +33,13 @@ namespace SignalRTest
             await Clients.All.SendAsync("Notify", $"{Context.ConnectionId} вошел");
             await base.OnConnectedAsync();
         }
-        public async Task ShareRoomInfo()
-        {
-            var roomNames = rooms.Select(room => room.RoomName).ToList();
-            await Clients.All.SendAsync("ShareRoomInfo", rooms);
-            await Clients.All.SendAsync("Notify", rooms);
-        }
 
         public async Task Join(string roomName)
         {
-            var room = rooms.FirstOrDefault(room => room.RoomName == roomName);
+            Console.WriteLine("OK");
+            var room = Rooms.rooms.FirstOrDefault(room => room.RoomName == roomName);
 
-            var testrooms = rooms.Select(r => r.RoomName).ToList();
+            var testrooms = Rooms.rooms.Select(r => r.RoomName).ToList();
             foreach (var rm in testrooms)
             {
                 Console.WriteLine(rm);
@@ -75,13 +67,19 @@ namespace SignalRTest
                 };
 
                 user.Rooms.Add(roomName);
-                users.Add(user);
+                Rooms.users.Add(user);
                 room.Users.Add(user);
                 await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
 
                 await Clients.Group(roomName).SendAsync("Notify", $"{Context.ConnectionId} вошел в чат {roomName}");
 
-                await ShareRoomInfo();
+                List<string> userNames = new List<string>();
+
+                foreach(var roomuser in room.Users)
+                {
+                    userNames.Add(roomuser.UserName);
+                }
+                await Clients.Group(roomName).SendAsync("RoomInfo", userNames);
             }
             else
             {
@@ -91,7 +89,7 @@ namespace SignalRTest
 
         public async Task Create(string roomName)
         {
-            var room = rooms.FirstOrDefault(room => room.RoomName == roomName);
+            var room = Rooms.rooms.FirstOrDefault(room => room.RoomName == roomName);
 
             if (room == null)
             {
@@ -101,9 +99,9 @@ namespace SignalRTest
                     Users = new List<User>()
                 };
 
-                rooms.Add(cr);
+                Rooms.rooms.Add(cr);
 
-                Console.WriteLine(rooms.Count.ToString());
+                Console.WriteLine(Rooms.rooms.Count.ToString());
 
                 await Clients.All.SendAsync("Notify", $"{Context.ConnectionId} создал чат {roomName}");
 
@@ -114,7 +112,7 @@ namespace SignalRTest
 
         public async Task Leave(string roomName)
         {
-            var room = rooms.FirstOrDefault(room => room.RoomName == roomName);
+            var room = Rooms.rooms.FirstOrDefault(room => room.RoomName == roomName);
 
             if (room != null)
             {
@@ -142,21 +140,20 @@ namespace SignalRTest
                     user.Rooms.Remove(roomName);
                     if (room.Users.Count == 0)
                     {
-                        rooms.Remove(room);
+                        Rooms.rooms.Remove(room);
                     }
                     await Clients.Group(roomName).SendAsync("Notify", $"{Context.ConnectionId} покинул чат {room.RoomName}");
                 }
-                await ShareRoomInfo();
             }
         }
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            var user = users.FirstOrDefault(user => user.UserName == Context.ConnectionId);
+            var user = Rooms.users.FirstOrDefault(user => user.UserName == Context.ConnectionId);
             if (user != null)
             {
                 await Clients.All.SendAsync("Notify", user);
-                users.Remove(user);
+                Rooms.users.Remove(user);
                 if (user.Rooms != null)
                 {
                     foreach (var room in user.Rooms)

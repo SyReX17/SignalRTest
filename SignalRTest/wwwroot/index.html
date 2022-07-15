@@ -137,16 +137,6 @@
 
         });
 
-        hubConnection.on('Notify', function (message) {
-
-            console.log(JSON.stringify(message));
-            let notifyElem = document.createElement("b");
-            notifyElem.appendChild(document.createTextNode(message));
-            let elem = document.createElement("p");
-            elem.appendChild(notifyElem);
-            var firstElem = document.getElementById("chatroom").firstChild;
-            document.getElementById("chatroom").insertBefore(elem, firstElem);
-        });
 
         // Вывод информации
         hubConnection.on('Notify', function (message) {

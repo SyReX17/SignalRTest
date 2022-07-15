@@ -35,30 +35,9 @@
                         </div>
                         <div class="call__interface">
                             <div class="call__view">
-                                <div class="call__video">
-                                    <div class="video__vid">
-                                        <p class="calltext"> video </p>
-                                    </div>
-                                    <div class="video__title">
-                                        <p class="calltext"> Leonid Medov</p>
-                                    </div>
-                                </div>
-                                <div class="call__video">
-                                    <div class="video__vid">
-                                        <p class="calltext"> video </p>
-                                    </div>
-                                    <div class="video__title">
-                                        <p class="calltext"> Artyom Askarov</p>
-                                    </div>
-                                </div>
-                                <div class="call__video">
-                                    <div class="video__vid">
-                                        <p class="calltext"> video </p>
-                                    </div>
-                                    <div class="video__title">
-                                        <p class="calltext"> Andrey Almosov</p>
-                                    </div>
-                                </div>
+                                    <video id="localVideo1" autoplay="true"></video>
+                                    <video id="remoteVideo1" autoplay=true></video>
+                                    <video id="remoteVideo2" autoplay=true></video>
                             </div>
                             <div class="call__input">
                                 <div class="input__items">
@@ -100,6 +79,8 @@
         <script src="vendors/signalr/dist/browser/signalr.min.js"></script>
         <script type="text/javascript" src="vendors/materialize/materialize.min.js"></script>
         <script>
+            const localvideo = document.getElementById('#localVideo1');
+            const remotevideo = document.getElementById('#remoteVideo1');
             let roomName = getCookie("name");
             let rn = document.getElementById('roomname');
             rn.append(roomName);
@@ -122,7 +103,7 @@
                 hubConnection.invoke("Join", roomName);
             }
 
-            
+            let connections = new Map();
 
 
             const hubConnection = new signalR.HubConnectionBuilder()
@@ -136,30 +117,94 @@
                 window.location.href = '/index.html';
             });
 
+            var constraints = { audio: true, video: { width: 1280, height: 720 } };
 
-            
+            navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(mediaStream) {
+                var video = document.querySelector('#localVideo1');
+                video.srcObject = mediaStream;
 
-            hubConnection.on('RoomInfo', function (users) {
-                console.log("WORK");
-                TableClear();
+                const mediaTrack = mediaStream.getTracks()[0];
+                video.onloadedmetadata = function(e) {
+                    video.play();
+                };
 
-                console.log(users);
-                const rows = document.querySelector("tbody");
-                users.forEach(user => {
-                    rows.append(getUsername(user))
+
+
+                hubConnection.on('RoomInfo', function (users) {
+                    console.log("WORK");
+                    TableClear();
+
+                    console.log(users);
+                    const rows = document.querySelector("tbody");
+                    users.forEach(user => {
+                        rows.append(getUsername(user))
+                    });
                 });
-            });
 
-            hubConnection.on('AddPeer', function (connect) {
-                console.log("WORK");
-                TableClear();
 
-                console.log(users);
-                const rows = document.querySelector("tbody");
-                users.forEach(user => {
-                    rows.append(getUsername(user))
+                
+
+                hubConnection.on('AddPeer', async function (connectionId, addPeer) {
+                    if (addPeer == true) {
+                        let peerConnection = new webkitRTCPeerConnection();
+                        let dataChannel = peerConnection.createDataChannel('test');
+                        let offer = await peerConnection.createOffer();
+                        peerConnection.setLocalDescription(offer);
+                        console.log(offer);
+                        connections.set(connectionId, peerConnection);
+                        hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(offer));
+                        test();
+                    }
                 });
-            });
+
+                hubConnection.on('SessionDescription', async function (connectionId, sessionDescription) {
+                    let peerConnection = new webkitRTCPeerConnection();
+                    sessionDescription = JSON.parse(sessionDescription);
+                    peerConnection.setRemoteDescription(sessionDescription);
+                    let dataChannel;
+                    peerConnection.ondatachannel = event => {
+                        dataChannel = event.channel;
+                        dataChannel.onopen = () => console.log('Open');
+                    };
+                    let answer = await peerConnection.createAnswer();
+                    console.log(answer);
+                    peerConnection.setLocalDescription(answer);
+                    connections.set(connectionId, peerConnection);
+                    hubConnection.invoke("RelayICE", connectionId, JSON.stringify(answer));
+                    test();
+                });
+
+                hubConnection.on('IceCandidate', function (connectionId, icecandidate) {
+                    console.log("Recieve");
+                    let peerConnection = connections.get(connectionId);
+                    console.log("NExt")
+                    icecandidate = JSON.parse(icecandidate);
+                    console.log(icecandidate);
+                    peerConnection.setRemoteDescription(icecandidate);
+                    MakeStream();
+                });
+
+                function MakeStream() {
+                    console.log("Make stream")
+                    connections.forEach((peerConnection) => {
+                        console.log(peerConnection.localDescription);
+                        peerConnection.addTrack(mediaTrack, mediaStream);
+                    })
+                }
+            })
+            .catch(function(err) { console.log(err.name + ": " + err.message); }); // always check for errors at the end.
+
+            function test() {
+                console.log("Please!!!!");
+                connections.forEach((peerConnection) => {
+                    console.log("Maybe!!!!");
+                    peerConnection.addEventListener('track', (event) => {
+                        console.log("Working!!!!!");
+                        remotevideo.srcObject = event.streams[0];
+                    })
+                })
+            }
 
             function TableClear() {
                 const tableBody = document.querySelector("tbody");

@@ -151,6 +151,9 @@
                         let dataChannel = peerConnection.createDataChannel('test');
                         let offer = await peerConnection.createOffer();
                         peerConnection.setLocalDescription(offer);
+                        mediaStream.getTracks().forEach(track => {
+                            peerConnection.addTrack(track, mediaStream)
+                        });
                         console.log(offer);
                         connections.set(connectionId, peerConnection);
                         hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(offer));
@@ -184,14 +187,6 @@
                     peerConnection.setRemoteDescription(icecandidate);
                     MakeStream();
                 });
-
-                function MakeStream() {
-                    console.log("Make stream")
-                    connections.forEach((peerConnection) => {
-                        console.log(peerConnection.localDescription);
-                        peerConnection.addTrack(mediaTrack, mediaStream);
-                    })
-                }
             })
             .catch(function(err) { console.log(err.name + ": " + err.message); }); // always check for errors at the end.
 

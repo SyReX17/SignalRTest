@@ -79,6 +79,7 @@
         <script src="vendors/signalr/dist/browser/signalr.min.js"></script>
         <script type="text/javascript" src="vendors/materialize/materialize.min.js"></script>
         <script>
+
             const localvideo = document.getElementById('#localVideo1');
             const remotevideo = document.getElementById('#remoteVideo1');
             let roomName = getCookie("name");
@@ -146,60 +147,77 @@
                 
 
                 hubConnection.on('AddPeer', async function (connectionId, addPeer) {
-                    if (addPeer == true) {
-                        let peerConnection = new webkitRTCPeerConnection();
-                        let dataChannel = peerConnection.createDataChannel('test');
+                    if (connections.has(connectionId)) {
+                        console.log("already connected");
+                    }
+
+                    let peerConnection = new RTCPeerConnection();
+
+                    connections.set(connectionId, peerConnection);
+
+                    connections.get(connectionId).onicecandidate = event => {
+                        if (event.candidate) {
+                            hubConnection.invoke("RelayICE", connectionId, event.candidate);
+                        }
+                    }
+
+                    let tracksNumber = 0;
+                    connections.get(connectionId).ontrack = ({ streams: [remoteStream] }) => {
+                        tracksNumber++
+
+                        if (tracksNumber === 2) { // video & audio tracks received
+                            tracksNumber = 0;
+                            remotevideo.srcObject = remoteStream;
+                        }
+                    }
+
+                    mediaStream.getTracks().forEach(track => {
+                        console.log(track);
+                        connections.get(connectionId).addTrack(track, mediaStream);
+                    });
+                    if (addPeer) {
                         let offer = await peerConnection.createOffer();
                         peerConnection.setLocalDescription(offer);
-                        mediaStream.getTracks().forEach(track => {
-                            peerConnection.addTrack(track, mediaStream)
-                        });
+
                         console.log(offer);
-                        connections.set(connectionId, peerConnection);
+
                         hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(offer));
-                        test();
                     }
                 });
 
-                hubConnection.on('SessionDescription', async function (connectionId, sessionDescription) {
-                    let peerConnection = new webkitRTCPeerConnection();
-                    sessionDescription = JSON.parse(sessionDescription);
-                    peerConnection.setRemoteDescription(sessionDescription);
-                    let dataChannel;
-                    peerConnection.ondatachannel = event => {
-                        dataChannel = event.channel;
-                        dataChannel.onopen = () => console.log('Open');
-                    };
-                    let answer = await peerConnection.createAnswer();
-                    console.log(answer);
-                    peerConnection.setLocalDescription(answer);
-                    connections.set(connectionId, peerConnection);
-                    hubConnection.invoke("RelayICE", connectionId, JSON.stringify(answer));
-                    test();
+                hubConnection.on('SessionDescription', async function (connectionId, remoteDescription) {
+
+                    remoteDescription = JSON.parse(remoteDescription);
+                    await connections.get(connectionId).setRemoteDescription(
+                        new RTCSessionDescription(remoteDescription)
+                    );
+
+
+                    if (remoteDescription.type === 'offer') {
+                        const answer = await connections.get(connectionId).createAnswer();
+
+                        await connections.get(connectionId).setLocalDescription(answer);
+
+                        hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(answer));
+                    }
                 });
 
-                hubConnection.on('IceCandidate', function (connectionId, icecandidate) {
-                    console.log("Recieve");
-                    let peerConnection = connections.get(connectionId);
-                    console.log("NExt")
-                    icecandidate = JSON.parse(icecandidate);
-                    console.log(icecandidate);
-                    peerConnection.setRemoteDescription(icecandidate);
-                    MakeStream();
+                hubConnection.on('IceCandidate', function (connectionId, iceCandidate) {
+                    connections.get(connectionId).addIceCandidate(
+                        new RTCIceCandidate(iceCandidate)
+                    );
+                });
+
+                hubConnection.on('RemovePeer', function (connectionId) {
+                    if (connections.has(connectionId)) {
+                        connections.get(connectionId).close();
+                    }
+
+                    connections.delete(connectionId);
                 });
             })
             .catch(function(err) { console.log(err.name + ": " + err.message); }); // always check for errors at the end.
 
-            function test() {
-                console.log("Please!!!!");
-                connections.forEach((peerConnection) => {
-                    console.log("Maybe!!!!");
-                    peerConnection.addEventListener('track', (event) => {
-                        console.log("Working!!!!!");
-                        remotevideo.srcObject = event.streams[0];
-                    })
-                })
-            }
 
             function TableClear() {
                 const tableBody = document.querySelector("tbody");

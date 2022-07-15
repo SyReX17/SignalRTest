@@ -20,17 +20,9 @@
             <div class="fbody">
                 <div class="fbody__container">
                     <div class="fbody__roomcreate">
-                        <div id="roomForm">
-                            <input type="text" id="roomName" />
-                            <input type="button" id="connectBtn" value="Connect" />
-                        </div>
                         <div id="createForm">
                             <input type="text" id="roomNameCreate" />
                             <input type="button" id="createBtn" value="Create" />
-                        </div>
-                        <div id="sendForm">
-                            <input type="text" id="message" />
-                            <input type="button" id="disconnectBtn" value="Disconnect" />
                         </div>
                     </div>
                     <div class="fbody__roomlist">
@@ -145,6 +137,17 @@
 
         });
 
+        hubConnection.on('Notify', function (message) {
+
+            console.log(JSON.stringify(message));
+            let notifyElem = document.createElement("b");
+            notifyElem.appendChild(document.createTextNode(message));
+            let elem = document.createElement("p");
+            elem.appendChild(notifyElem);
+            var firstElem = document.getElementById("chatroom").firstChild;
+            document.getElementById("chatroom").insertBefore(elem, firstElem);
+        });
+
         // Вывод информации
         hubConnection.on('Notify', function (message) {
 
@@ -157,22 +160,11 @@
             document.getElementById("chatroom").insertBefore(elem, firstElem);
         });
 
-        // Подключение к комнате
-        document.getElementById("connectBtn").addEventListener("click", function (e) {
-            let message = document.getElementById("roomName").value;
-            console.log(message);
-            hubConnection.invoke('Join', message);
-        });
 
         document.getElementById("createBtn").addEventListener("click", function (e) {
             let message = document.getElementById("roomNameCreate").value;
             console.log(message);
             addRoom(message);
-        });
-
-        document.getElementById("disconnectBtn").addEventListener("click", function (e) {
-            let message = document.getElementById("message").value;
-            hubConnection.invoke('Leave', message);
         });
 
         hubConnection.start();

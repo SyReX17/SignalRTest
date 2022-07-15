@@ -149,6 +149,18 @@
                     rows.append(getUsername(user))
                 });
             });
+
+            hubConnection.on('AddPeer', function (connect) {
+                console.log("WORK");
+                TableClear();
+
+                console.log(users);
+                const rows = document.querySelector("tbody");
+                users.forEach(user => {
+                    rows.append(getUsername(user))
+                });
+            });
+
             function TableClear() {
                 const tableBody = document.querySelector("tbody");
                 while (tableBody.firstChild) {

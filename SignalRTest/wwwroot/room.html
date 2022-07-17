@@ -22,7 +22,6 @@
                 <div class="call">
                     <div class="call__container">
                         <div class="call__partlist">
-                            <h5>Participants: </h5>
                             <table class="table table-condensed table-striped table-bordered centered striped">
                                 <thead>
                                     <tr>
@@ -34,30 +33,28 @@
                             </table>
                         </div>
                         <div class="call__interface">
-                            <div class="call__view">
-                                    <video id="localVideo1" autoplay="true"></video>
-                                    <video id="remoteVideo1" autoplay=true></video>
-                                    <video id="remoteVideo2" autoplay=true></video>
+                            <div id="videos" class="call__view">
+                                <video id="localVideo1" autoplay="true" muted></video>
                             </div>
                             <div class="call__input">
                                 <div class="input__items">
                                     <div class="input__btn">
-                                        <a class="btn-floating btn-large waves-effect waves-light teal lighten-2 ">
-                                            <span class="material-symbols-outlined">
+                                        <a class="btn-floating btn-large waves-effect waves-light" style="background-color: #fcd820">
+                                            <span class="material-symbols-outlined" style="color: #201e1b">
                                                 mic
                                             </span>
                                         </a>
                                     </div>
                                     <div class="input__btn">
-                                        <a class="btn-floating btn-large waves-effect waves-light teal lighten-2">
-                                            <span class="material-symbols-outlined">
+                                        <a id="vcam" class="btn-floating btn-large waves-effect waves-light" style="background-color: #fcd820">
+                                            <span class="material-symbols-outlined" style="color: #201e1b">
                                                 videocam
                                             </span>
                                         </a>
                                     </div>
                                     <div class="input__btn">
-                                        <a id="close" class="btn-floating btn-large waves-effect waves-light red">
-                                            <span class="material-symbols-outlined">
+                                        <a id="close" class="btn-floating btn-large waves-effect waves-light" style="background-color: #201e1b">
+                                            <span class="material-symbols-outlined" style="color: #fcd820">
                                                 call_end
                                             </span>
                                         </a>
@@ -71,7 +68,7 @@
             <footer class="ftr">
                 <div class="ftr__container">
                     <div class="ftr__text">
-                        <p>footer</p>
+                        <p>AddCode Summer Practice 2022 ©VideoChat Team</p>
                     </div>
                 </div>
             </footer>
@@ -80,167 +77,180 @@
         <script type="text/javascript" src="vendors/materialize/materialize.min.js"></script>
         <script>
 
-            const localvideo = document.getElementById('#localVideo1');
-            const remotevideo = document.getElementById('#remoteVideo1');
-            let roomName = getCookie("name");
-            let rn = document.getElementById('roomname');
-            rn.append(roomName);
+            window.onload = () => {
+                let roomName = getRoomName();
 
-            function getCookie(name) {
-                let matches = document.cookie.match(new RegExp(
-                    "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
-                ));
-                return matches ? decodeURIComponent(matches[1]) : undefined;
-            }
+                function getRoomName() {
+                    const search = location.search;
+                    console.log(search);
+                    const params = new URLSearchParams(search);
+                    const roomname = params.get("RoomName");
+                    let rn = document.getElementById('roomname');
+                    rn.append(roomname);
+                    return roomname;
+                }
 
+                let connections = new Map();
 
-            async function f() {
+                const videoGrid = document.querySelector('.call__view');
 
-                let promise = new Promise((resolve, reject) => {
-                    setTimeout(() => resolve("готово!"), 1000)
-                });
-
-                let result = await promise;
-                hubConnection.invoke("Join", roomName);
-            }
-
-            let connections = new Map();
-
-
-            const hubConnection = new signalR.HubConnectionBuilder()
-                .withUrl("/chat")
-                .build();
-
-
-            document.getElementById("close").addEventListener("click", function (e) {
-                e.preventDefault();
-                hubConnection.invoke("Leave", roomName);
-                window.location.href = '/index.html';
-            });
-
-            var constraints = { audio: true, video: { width: 1280, height: 720 } };
-
-            navigator.mediaDevices.getUserMedia(constraints)
-            .then(function(mediaStream) {
-                var video = document.querySelector('#localVideo1');
-                video.srcObject = mediaStream;
-
-                const mediaTrack = mediaStream.getTracks()[0];
-                video.onloadedmetadata = function(e) {
-                    video.play();
+                const addVideoStream = (video, stream) => {
+                    video.srcObject = stream;
+                    video.addEventListener("loadedmetadata", () => {
+                        video.play();
+                        videoGrid.append(video);
+                    });
                 };
 
+                const hubConnection = new signalR.HubConnectionBuilder()
+                    .withUrl("/chat")
+                    .build();
 
 
-                hubConnection.on('RoomInfo', function (users) {
-                    console.log("WORK");
-                    TableClear();
-
-                    console.log(users);
-                    const rows = document.querySelector("tbody");
-                    users.forEach(user => {
-                        rows.append(getUsername(user))
-                    });
+                document.getElementById("close").addEventListener("click", function (e) {
+                    e.preventDefault();
+                    hubConnection.invoke("Leave", roomName);
+                    window.location.href = '/index.html';
                 });
 
+                var constraints = { audio: true, video: { width: 1280, height: 720 } };
 
-                
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(function (mediaStream) {
+                        var video = document.querySelector('#localVideo1');
+                        console.info(mediaStream.getTracks());
+                        video.srcObject = mediaStream;
+                        video.volume = 0;
+                        video.onloadedmetadata = function (e) {
+                            video.play();
+                        };
 
-                hubConnection.on('AddPeer', async function (connectionId, addPeer) {
-                    if (connections.has(connectionId)) {
-                        console.log("already connected");
+                        let username = prompt('Введите имя пользователя', '');
+       
+                        hubConnection.invoke("Join", roomName, username);
+
+
+
+                        hubConnection.on('RoomInfo', function (users) {
+                            console.log("WORK");
+                            TableClear();
+
+                            console.log(users);
+                            const rows = document.querySelector("tbody");  
+                            users.forEach(user => {
+                                rows.append(getUsername(user))
+                            });
+                        });
+
+
+
+
+                        hubConnection.on('AddPeer', async function (connectionId, addPeer) {
+                            if (connections.has(connectionId)) {
+                                console.log("already connected");
+                            }
+
+                            const servers = {
+                                iceServers: [{urls: "stun:stun.1.google.com:19302"}],
+                                iceCandidatePoolSize: 10,
+                            };
+
+                            let peerConnection = new RTCPeerConnection(servers);
+
+                            connections.set(connectionId, peerConnection);
+
+                            connections.get(connectionId).onicecandidate = event => {
+                                if (event.candidate) {
+                                    hubConnection.invoke("RelayICE", connectionId, JSON.stringify(event.candidate));
+                                }
+                            }
+
+                            let tracksNumber = 0;
+                            connections.get(connectionId).ontrack = ({ streams: [remoteStream] }) => {
+                                console.info(remoteStream);
+                                tracksNumber++
+
+                                if (tracksNumber === 2) { // video & audio tracks received
+                                    const remotevideo = document.createElement("video");
+                                    remotevideo.setAttribute("id", connectionId);
+                                    addVideoStream(remotevideo, remoteStream);
+                                }
+                            }
+
+                            mediaStream.getTracks().forEach(track => {
+                                console.log(connections.get(connectionId))
+                                connections.get(connectionId).addTrack(track, mediaStream);
+                            });
+
+                            if (addPeer) {
+                                let offer = await peerConnection.createOffer();
+                                peerConnection.setLocalDescription(offer);
+
+                                console.log(offer);
+
+                                hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(offer));
+                            }
+                        });
+
+                        hubConnection.on('SessionDescription', async function (connectionId, remoteDescription) {
+
+                            remoteDescription = JSON.parse(remoteDescription);
+                            await connections.get(connectionId).setRemoteDescription(
+                                new RTCSessionDescription(remoteDescription)
+                            );
+
+                            console.info(remoteDescription, connections.get(connectionId));
+
+
+                            if (remoteDescription.type === 'offer') {
+                                const answer = await connections.get(connectionId).createAnswer();
+
+                                await connections.get(connectionId).setLocalDescription(answer);
+
+                                hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(answer));
+                            }
+                        });
+
+                        hubConnection.on('IceCandidate', function (connectionId, iceCandidate) {
+                            console.log(iceCandidate);
+                            connections.get(connectionId).addIceCandidate(
+                                new RTCIceCandidate(JSON.parse(iceCandidate))
+                            );
+                        });
+
+                        hubConnection.on('RemovePeer', function (connectionId) {
+                            if (connections.has(connectionId)) {
+                                connections.get(connectionId).close();
+                            }
+
+                            connections.delete(connectionId);
+                            document.getElementById(connectionId).remove();
+                        });
+                    })
+                    .catch(function (err) { console.log(err.name + ": " + err.message); }); // always check for errors at the end.
+
+
+                function TableClear() {
+                    const tableBody = document.querySelector("tbody");
+                    while (tableBody.firstChild) {
+                        tableBody.removeChild(tableBody.firstChild);
                     }
-
-                    let peerConnection = new RTCPeerConnection();
-
-                    connections.set(connectionId, peerConnection);
-
-                    connections.get(connectionId).onicecandidate = event => {
-                        if (event.candidate) {
-                            hubConnection.invoke("RelayICE", connectionId, event.candidate);
-                        }
-                    }
-
-                    let tracksNumber = 0;
-                    connections.get(connectionId).ontrack = ({ streams: [remoteStream] }) => {
-                        tracksNumber++
-
-                        if (tracksNumber === 2) { // video & audio tracks received
-                            tracksNumber = 0;
-                            remotevideo.srcObject = remoteStream;
-                        }
-                    }
-
-                    mediaStream.getTracks().forEach(track => {
-                        console.log(track);
-                        connections.get(connectionId).addTrack(track, mediaStream);
-                    });
-                    if (addPeer) {
-                        let offer = await peerConnection.createOffer();
-                        peerConnection.setLocalDescription(offer);
-
-                        console.log(offer);
-
-                        hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(offer));
-                    }
-                });
-
-                hubConnection.on('SessionDescription', async function (connectionId, remoteDescription) {
-
-                    remoteDescription = JSON.parse(remoteDescription);
-                    await connections.get(connectionId).setRemoteDescription(
-                        new RTCSessionDescription(remoteDescription)
-                    );
-
-
-                    if (remoteDescription.type === 'offer') {
-                        const answer = await connections.get(connectionId).createAnswer();
-
-                        await connections.get(connectionId).setLocalDescription(answer);
-
-                        hubConnection.invoke("RelaySDP", connectionId, JSON.stringify(answer));
-                    }
-                });
-
-                hubConnection.on('IceCandidate', function (connectionId, iceCandidate) {
-                    connections.get(connectionId).addIceCandidate(
-                        new RTCIceCandidate(iceCandidate)
-                    );
-                });
-
-                hubConnection.on('RemovePeer', function (connectionId) {
-                    if (connections.has(connectionId)) {
-                        connections.get(connectionId).close();
-                    }
-
-                    connections.delete(connectionId);
-                });
-            })
-            .catch(function(err) { console.log(err.name + ": " + err.message); }); // always check for errors at the end.
-
-
-            function TableClear() {
-                const tableBody = document.querySelector("tbody");
-                while (tableBody.firstChild) {
-                    tableBody.removeChild(tableBody.firstChild);
                 }
+
+                function getUsername(user) {
+                    const tr = document.createElement("tr");
+                    tr.setAttribute("data-rowid", user);
+
+
+                    const nameTd = document.createElement("td");
+                    nameTd.append(user);
+                    tr.append(nameTd);
+
+                    return tr;
+                }
+
+                hubConnection.start();
             }
-
-            function getUsername(user) {
-                const tr = document.createElement("tr");
-                tr.setAttribute("data-rowid", user);
-
-
-                const nameTd = document.createElement("td");
-                nameTd.append(user);
-                tr.append(nameTd);
-
-                return tr;
-            }
-
-            hubConnection.start();
-
-            f();
         </script>
     </body>
 </html>

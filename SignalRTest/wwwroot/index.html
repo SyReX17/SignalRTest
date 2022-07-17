@@ -20,26 +20,27 @@
             <div class="fbody">
                 <div class="fbody__container">
                     <div class="fbody__roomcreate">
+                        <h4 class="h__main"> Create videochat room </h4>
                         <div id="createForm">
                             <input type="text" id="roomNameCreate" />
-                            <input type="button" id="createBtn" value="Create" />
+                            <input type="button" class="waves-effect waves-light btn" style="background-color: #fcd820" id="createBtn" value="Create" />
                         </div>
                     </div>
                     <div class="fbody__roomlist">
-        <div>
-        <h4 class="h__main"> Rooms </h1>
-        <table class="table table-condensed table-striped table-bordered centered striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Paritcipants</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
-    </div>
+                        <div>
+                            <h4 class="h__main"> Rooms </h4>
+                            <table class="table table-condensed table-striped table-bordered centered" style="background-color: #201e1b">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Paritcipants</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -81,17 +82,17 @@
         }
 
         // Перевод JSON в таблицу - реализация списка комнат
-        function getRow(user) {
+        function getRow(room) {
             const tr = document.createElement("tr");
-            tr.setAttribute("data-rowid", user.name);
+            tr.setAttribute("data-rowid", room.name);
  
 
              const nameTd = document.createElement("td");
-             nameTd.append(user.name);
+             nameTd.append(room.name);
              tr.append(nameTd);
 
              const ptcTd = document.createElement("td");
-             ptcTd.append(user.numberOfClients);
+             ptcTd.append(room.numberOfClients);
              tr.append(ptcTd);
 
             const linksTd = document.createElement("td");
@@ -101,8 +102,8 @@
                 joinLink.addEventListener("click", e => {
                     e.preventDefault();
                     hubConnection.invoke("Leave");
-                    document.cookie = `name=${user.name}`;
-                    window.location.href = 'https://localhost:7291/room.html';
+                    document.getElementById("roomNameCreate").value = "";
+                    window.location.href = `/room.html?RoomName=${room.name}`;
                     });
                 linksTd.append(joinLink); 
 

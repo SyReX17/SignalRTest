@@ -6,8 +6,9 @@ namespace SignalRTest
     public class ChatHub : Hub
     {
         
-        public async Task Join(string roomName)
+        public async Task Join(string roomName, string fullName)
         {
+            Console.WriteLine(roomName);
             var currentUser = Rooms.users.FirstOrDefault(user => user.UserName == Context.ConnectionId);
 
             if (currentUser == null)
@@ -39,7 +40,8 @@ namespace SignalRTest
                     var user = new User()
                     {
                         UserName = Context.ConnectionId,
-                        Rooms = new List<string>()
+                        Rooms = new List<string>(),
+                        FullName = fullName
                     };
 
                     user.Rooms.Add(roomName);
@@ -67,7 +69,7 @@ namespace SignalRTest
 
             foreach (var roomuser in room.Users)
             {
-                userNames.Add(roomuser.UserName);
+                userNames.Add(roomuser.FullName);
             }
             await Clients.Group(room.RoomName).SendAsync("RoomInfo", userNames);
         }
@@ -85,14 +87,6 @@ namespace SignalRTest
                 };
 
                 Rooms.rooms.Add(cr);
-
-                Console.WriteLine(Rooms.rooms.Count.ToString());
-
-                await Clients.All.SendAsync("Notify", $"{Context.ConnectionId} создал чат {roomName}");
-
-
-
-                await Join(roomName);
             }
         }
 
